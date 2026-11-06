@@ -172,6 +172,11 @@ export function JobSearchSection({ initial }: { initial: JobSearchSettingsView }
                 <p className="text-sm text-muted">No key needed. The job agent doesn&apos;t search this source; choose JSearch, Adzuna or FreeHire for it.</p>
               </>
             )}
+            {source === "LINKEDIN" && (
+              <p className="text-sm text-muted">
+                No key needed. Dossier searches LinkedIn&apos;s global public job directory directly.
+              </p>
+            )}
             {source === "FREEHIRE" && (
               <p className="text-sm text-muted">
                 {view.freehire.host === new URL(FREEHIRE_URL).host

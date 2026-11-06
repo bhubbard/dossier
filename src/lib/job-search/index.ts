@@ -10,6 +10,7 @@ import { adzuna } from "./adzuna";
 import { arbeitsagentur } from "./arbeitsagentur";
 import { freehire } from "./freehire";
 import { jsearch } from "./jsearch";
+import { linkedin } from "./linkedin";
 import { postingKey, type FoundPosting, type JobSource, type SearchPage, type SearchQuery } from "./search";
 import { sourceCovers } from "./sources";
 
@@ -22,6 +23,7 @@ export type { JSearchHost, RequestContext, SourceCredentials } from "./adapter";
 export { JobSearchError } from "./errors";
 
 const ADAPTERS: { [S in JobSource]: JobSourceAdapter<S> } = {
+  LINKEDIN: linkedin,
   JSEARCH: jsearch,
   ADZUNA: adzuna,
   ARBEITSAGENTUR: arbeitsagentur,

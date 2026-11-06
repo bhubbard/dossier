@@ -43,6 +43,39 @@ export async function requestJson(
   }
 }
 
+/** GETs HTML from a source, turning every failure into a JobSearchError. */
+export async function requestHtml(
+  source: JobSource,
+  url: URL,
+  { headers = {}, signal, timeoutMs = REQUEST_TIMEOUT_MS }: { headers?: Record<string, string>; signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<string> {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "accept-language": "en-US,en;q=0.9",
+        ...headers,
+      },
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+      cache: "no-store",
+    });
+  } catch (error) {
+    const reason = timeout.aborted ? "timed out" : ((error as { cause?: { code?: string } }).cause?.code ?? "request failed");
+    throw jobSearchError("unavailable", source, { detail: `${url.pathname}: ${reason}` });
+  }
+
+  const detail = `${url.pathname}: HTTP ${response.status}`;
+  if (response.status === 429) throw jobSearchError("quota", source, { detail });
+  if (!response.ok) throw jobSearchError(response.status >= 500 ? "unavailable" : "changed", source, { detail });
+
+  const text = await readLimited(response, MAX_BYTES);
+  if (text === null) throw jobSearchError("changed", source, { detail: `${url.pathname}: answer over ${MAX_BYTES} bytes` });
+  return text;
+}
+
 /** The body as text, or null when it's bigger than `limit` bytes. */
 async function readLimited(response: Response, limit: number): Promise<string | null> {
   if (!response.body) return "";

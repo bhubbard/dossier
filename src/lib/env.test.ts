@@ -180,8 +180,8 @@ describe("job search variables (E14-4)", () => {
   });
 
   it("rejects sources and hosts it doesn't know, without echoing keys", () => {
-    expect(problems({ ...valid, DOSSIER_JOBS_SOURCE: "linkedin", DOSSIER_JSEARCH_HOST: "google", DOSSIER_JSEARCH_KEY: "ak_secret" })).toEqual([
-      'DOSSIER_JOBS_SOURCE must be one of jsearch, adzuna, arbeitsagentur, freehire, off (got "linkedin").',
+    expect(problems({ ...valid, DOSSIER_JOBS_SOURCE: "monster", DOSSIER_JSEARCH_HOST: "google", DOSSIER_JSEARCH_KEY: "ak_secret" })).toEqual([
+      'DOSSIER_JOBS_SOURCE must be one of linkedin, jsearch, adzuna, arbeitsagentur, freehire, off (got "monster").',
       'DOSSIER_JSEARCH_HOST must be openwebninja or rapidapi (got "google").',
     ]);
   });

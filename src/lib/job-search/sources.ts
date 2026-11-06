@@ -46,6 +46,17 @@ export type SourceInfo = {
 };
 
 export const SOURCE_INFO: Record<JobSource, SourceInfo> = {
+  LINKEDIN: {
+    name: "LinkedIn",
+    description: "Direct job search from LinkedIn's global public directory. No key or account required.",
+    tag: "Worldwide · free, no key · direct guest directory",
+    keyUrl: null,
+    quotaPeriod: null,
+    attribution: "Jobs from LinkedIn",
+    attributionLink: { home: "https://www.linkedin.com/jobs", local: /^www\.linkedin\.com$/ },
+    countries: null,
+    radius: true,
+  },
   JSEARCH: {
     name: "JSearch",
     description: "Postings from LinkedIn, Indeed, Glassdoor and company sites, through Google for Jobs.",

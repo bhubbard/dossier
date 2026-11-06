@@ -8,6 +8,7 @@ import zlib from "node:zlib";
 
 import { parse, type HTMLElement, type Node } from "node-html-parser";
 
+import { renderPageWithBrowser, trySpecializedExtractors } from "@/lib/posting-extractors";
 import { appVersion } from "@/lib/version";
 
 // "Fetch" on a new application (E7-8, NEW-9): the server downloads the
@@ -154,11 +155,51 @@ export async function fetchPosting(
   link: string,
   { lookup = guardedLookup, timeoutMs = TIMEOUT_MS }: { lookup?: LookupFunction; timeoutMs?: number } = {},
 ): Promise<FetchedPosting> {
+  let url: URL;
+  try {
+    url = new URL(link);
+  } catch {
+    return { ok: false, error: FETCH_MESSAGES.notWeb };
+  }
+
+  if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password) {
+    return { ok: false, error: FETCH_MESSAGES.notWeb };
+  }
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  if (lookup === guardedLookup && (isIP(host) ? !isPublicAddress(host) : /(^|\.)localhost\.?$/i.test(host))) {
+    return { ok: false, error: FETCH_MESSAGES.privateAddress };
+  }
+
+  // 1. Try specialized extractors for major job boards (LinkedIn, Indeed, Greenhouse, Lever, Ashby)
+  try {
+    const specialized = await trySpecializedExtractors(url, { lookup, timeoutMs });
+    if (specialized && specialized.ok) return specialized;
+  } catch {
+    // Continue to standard fetch
+  }
+
+  // 2. Standard fetch
   const page = await fetchHtml(link, { lookup, timeoutMs });
+  if (page.ok) {
+    const posting = postingFromHtml(page.html);
+    if (posting) return { ok: true, ...posting, url: page.url };
+  }
+
+  // 3. Fallback to headless browser rendering for JS-rendered SPAs or sites requiring client execution
+  if (lookup === guardedLookup) {
+    try {
+      const browserHtml = await renderPageWithBrowser(link, timeoutMs);
+      if (browserHtml) {
+        const posting = postingFromHtml(browserHtml);
+        if (posting) return { ok: true, ...posting, url: link };
+      }
+    } catch {
+      // Browser rendering unavailable or timed out
+    }
+  }
+
   if (!page.ok) return { ok: false, error: page.error };
-  const posting = postingFromHtml(page.html);
-  if (!posting) return { ok: false, error: FETCH_MESSAGES.unreadable };
-  return { ok: true, ...posting, url: page.url };
+  return { ok: false, error: FETCH_MESSAGES.unreadable };
 }
 
 export type FetchedPage = { ok: true; html: string; url: string } | { ok: false; error: string; status?: number };

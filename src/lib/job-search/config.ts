@@ -43,6 +43,7 @@ type JobEnv = Pick<
 >;
 
 const FROM_ENV: Record<NonNullable<Env["DOSSIER_JOBS_SOURCE"]>, JobSource | null> = {
+  linkedin: "LINKEDIN",
   jsearch: "JSEARCH",
   adzuna: "ADZUNA",
   arbeitsagentur: "ARBEITSAGENTUR",
@@ -152,6 +153,8 @@ export function credentialsFor<S extends JobSource>(config: JobSearchConfig, sou
       if (!config.arbeitsagentur.acceptedAt) throw jobSearchError("not-accepted", source);
       return {} as SourceCredentials[S];
     }
+    case "LINKEDIN":
+      return {} as SourceCredentials[S];
     case "FREEHIRE":
       return {} as SourceCredentials[S];
   }

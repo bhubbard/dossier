@@ -4,6 +4,7 @@ import { adzuna } from "./adzuna";
 import { arbeitsagentur } from "./arbeitsagentur";
 import { requestContext } from "./config";
 import { freehire } from "./freehire";
+import { linkedin } from "./linkedin";
 import { EMPTY_QUERY } from "./search";
 
 // Checks against the real Adzuna, Arbeitsagentur and FreeHire services,
@@ -67,5 +68,16 @@ describe.runIf(live.has("freehire"))("FreeHire (live)", { timeout: 30_000 }, () 
     expect(postings.length).toBeGreaterThan(0);
     const weekAgo = Date.now() - 8 * 86_400_000;
     expect(postings.every((posting) => posting.postedAt !== null && Date.parse(posting.postedAt) > weekAgo)).toBe(true);
+  });
+});
+
+describe.runIf(live.has("linkedin"))("LinkedIn (live)", { timeout: 30_000 }, () => {
+  it("finds postings, pagination, and details directly without auth", async () => {
+    const page = await linkedin.search({ ...query, keywords: "software engineer", place: "San Francisco" }, {}, null);
+    expect(page.postings.length).toBeGreaterThan(0);
+    expect(page.postings[0].title).toBeTruthy();
+    expect(page.postings[0].company).toBeTruthy();
+    const details = await linkedin.details(page.postings[0], {});
+    expect(details).toBeTruthy();
   });
 });

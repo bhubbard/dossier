@@ -10,6 +10,7 @@ export type { JSearchHost };
 
 /** What each source needs to be asked. */
 export type SourceCredentials = {
+  LINKEDIN: Record<string, never>;
   JSEARCH: { key: string; host: JSearchHost };
   ADZUNA: { appId: string; key: string };
   ARBEITSAGENTUR: Record<string, never>;

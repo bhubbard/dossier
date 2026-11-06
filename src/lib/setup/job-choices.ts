@@ -13,7 +13,7 @@ export const JOB_KINDS: readonly { value: JobKind; name: string; description: st
 ];
 
 export type JobChoice = {
-  source: "FREEHIRE" | "ADZUNA" | "JSEARCH";
+  source: "LINKEDIN" | "FREEHIRE" | "ADZUNA" | "JSEARCH";
   kind: Exclude<JobKind, "none">;
   name: string;
   about: string;
@@ -22,6 +22,14 @@ export type JobChoice = {
 };
 
 export const JOB_CHOICES: readonly JobChoice[] = [
+  {
+    source: "LINKEDIN",
+    kind: "any",
+    name: "LinkedIn",
+    about: "Direct search from LinkedIn's global public directory, with full postings and no key needed.",
+    cost: "Free for personal use, with no key.",
+    steps: [{ text: "Press **Use LinkedIn** below. That's all." }],
+  },
   {
     source: "FREEHIRE",
     kind: "tech",
