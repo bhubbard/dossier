@@ -2,12 +2,6 @@ import type { NextConfig } from "next";
 
 const isCloudflare = process.env.CLOUDFLARE === "true" || process.env.OPEN_NEXT === "true";
 
-if (process.env.NODE_ENV === "development") {
-  import("@opennextjs/cloudflare")
-    .then(({ initOpenNextCloudflareForDev }) => initOpenNextCloudflareForDev())
-    .catch(() => {});
-}
-
 const nextConfig: NextConfig = {
   // The production image runs .next/standalone: the server and only the files
   // it needs (E12-1). On Cloudflare, open-next extracts .open-next directly.

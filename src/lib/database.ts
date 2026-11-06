@@ -17,13 +17,12 @@ export function isSqliteUrl(url: string): boolean {
   return url.startsWith("file:") || url === "d1" || url.startsWith("d1:");
 }
 
+const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
+
 function getCloudflareEnvSync(): { DB?: D1Database; HYPERDRIVE?: { connectionString: string } } | null {
   try {
-    // Dynamic require so non-Cloudflare/Node builds don't fail if opennext is not active
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const ctx = getCloudflareContext({ async: false });
-    return (ctx?.env as { DB?: D1Database; HYPERDRIVE?: { connectionString: string } }) ?? null;
+    const ctx = (globalThis as Record<symbol, unknown>)[cloudflareContextSymbol] as { env?: { DB?: D1Database; HYPERDRIVE?: { connectionString: string } } } | undefined;
+    return ctx?.env ?? null;
   } catch {
     return null;
   }

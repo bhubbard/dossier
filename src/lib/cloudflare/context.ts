@@ -13,23 +13,28 @@ export interface CloudflareEnv {
   [key: string]: unknown;
 }
 
+const cloudflareContextSymbol = Symbol.for("__cloudflare-context__");
+
 /**
  * Accesses Cloudflare Worker environment bindings safely in Server Components,
- * Server Actions, and API routes via @opennextjs/cloudflare.
+ * Server Actions, and API routes.
  * Returns null if running in standard Node.js / Docker.
  */
-export async function getCloudflareEnv(): Promise<CloudflareEnv | null> {
+export function getCloudflareEnvSync(): CloudflareEnv | null {
   try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const ctx = await getCloudflareContext({ async: true });
-    return (ctx?.env as CloudflareEnv) ?? null;
+    const globalContext = (globalThis as Record<symbol, unknown>)[cloudflareContextSymbol] as { env?: CloudflareEnv } | undefined;
+    return globalContext?.env ?? null;
   } catch {
     return null;
   }
 }
 
+export async function getCloudflareEnv(): Promise<CloudflareEnv | null> {
+  return getCloudflareEnvSync();
+}
+
 /** Whether the app is actively running inside a Cloudflare Worker environment. */
 export async function isCloudflareWorker(): Promise<boolean> {
-  const env = await getCloudflareEnv();
+  const env = getCloudflareEnvSync();
   return Boolean(env && (env.DB || env.DOSSIER_BUCKET || env.MYBROWSER || env.AI || env.NEXT_CACHE_WORKERS_KV));
 }
