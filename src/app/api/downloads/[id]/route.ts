@@ -1,12 +1,10 @@
-import { readFile, unlink } from "node:fs/promises";
-import path from "node:path";
-
 import { NextResponse } from "next/server";
 
 import { contentDisposition } from "@/lib/file-name";
 import { getJob } from "@/lib/jobs/runner";
-import { downloadsDir, zipPdfsJob } from "@/lib/jobs/zip-pdfs";
+import { zipPdfsJob } from "@/lib/jobs/zip-pdfs";
 import { route } from "@/lib/route";
+import { deleteStorageFile, readStorageFile } from "@/lib/storage";
 
 const GONE = "That download isn't here any more. Start a new one from Settings → Your data.";
 
@@ -17,11 +15,11 @@ export const GET = route<RouteContext<"/api/downloads/[id]">>(async (_request, {
   const result = job?.type === zipPdfsJob.type && job.status === "DONE" ? zipPdfsJob.result.safeParse(job.result) : null;
   if (!result?.success) return NextResponse.json({ error: GONE }, { status: 404 });
 
-  const file = path.join(downloadsDir(), result.data.file);
-  const zip = await readFile(file).catch(() => null);
+  const zip = await readStorageFile("downloads", result.data.file);
   if (!zip) return NextResponse.json({ error: GONE }, { status: 410 });
-  await unlink(file).catch(() => {});
-  return new Response(zip, {
+  await deleteStorageFile("downloads", result.data.file);
+
+  return new Response(zip as unknown as BodyInit, {
     headers: { "content-type": "application/zip", "content-disposition": contentDisposition(result.data.fileName) },
   });
 });

@@ -10,7 +10,7 @@ const SECRET_MIN_LENGTH = 32;
 const GENERATE_SECRET = "for example the output of `openssl rand -base64 32`";
 const HASH_PASSWORD = "Make one with `docker run --rm -it ghcr.io/aientech/dossier hash-password`";
 
-export const AI_PROVIDERS = ["local", "openai", "anthropic", "mistral", "lmstudio"] as const;
+export const AI_PROVIDERS = ["local", "openai", "anthropic", "mistral", "lmstudio", "workers-ai"] as const;
 export const JOB_SOURCE_NAMES = ["jsearch", "adzuna", "arbeitsagentur", "freehire", "off"] as const;
 export const SCORER_NAMES = ["ai", "jev"] as const;
 
@@ -53,9 +53,9 @@ const schema = z.object({
     // Never echo the value: it contains the database password.
     z
       .string()
-      .regex(/^(postgres(ql)?:\/\/|file:)/, {
+      .regex(/^(postgres(ql)?:\/\/|file:|d1:?)/, {
         error:
-          "DATABASE_URL must be a PostgreSQL connection string starting with postgresql://, or an SQLite file starting with file:.",
+          "DATABASE_URL must be a PostgreSQL connection string starting with postgresql://, an SQLite file starting with file:, or d1 for Cloudflare D1.",
       })
       // A relative path would mean another file to the migrations, which run in another folder.
       .refine((url) => !url.startsWith("file:") || path.isAbsolute(url.slice("file:".length)), {

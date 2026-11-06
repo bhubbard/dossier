@@ -84,6 +84,19 @@ export const PROVIDER_OPTIONS: readonly {
     defaultModel: "mistral-small-2603",
     apiKey: { label: "API key" },
   },
+  {
+    value: AiProvider.WORKERS_AI,
+    name: "Cloudflare Workers AI",
+    vendor: "Cloudflare",
+    description: "Run serverless LLMs on Cloudflare's global GPU network with zero cold starts.",
+    tag: "Edge native · fast · serverless",
+    local: false,
+    defaultUrl: "https://api.cloudflare.com/client/v4/ai/v1",
+    urlPlaceholder: "https://api.cloudflare.com/client/v4/accounts/<account-id>/ai/v1",
+    urlHint: "When deployed on Cloudflare Workers, the AI binding is used automatically without an API key or custom URL.",
+    defaultModel: "@cf/meta/llama-3.3-70b-instruct",
+    apiKey: { label: "Cloudflare API token", hint: "Only needed when calling Workers AI from outside Cloudflare Workers." },
+  },
 ];
 
 export function providerOption(provider: AiProvider) {

@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dossier",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-02-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "NEXT_CACHE_WORKERS_KV",
+      "id": "dossier-next-cache-kv"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dossier-db",
+      "database_id": "dossier-db-preview",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "DOSSIER_BUCKET",
+      "bucket_name": "dossier-storage"
+    }
+  ],
+  "browser": {
+    "binding": "MYBROWSER"
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
+  "vars": {
+    "DATABASE_URL": "d1",
+    "DOSSIER_AI_PROVIDER": "workers-ai",
+    "DOSSIER_AI_MODEL": "@cf/meta/llama-3.3-70b-instruct",
+    "DOSSIER_BACKUP_RETENTION_DAYS": "14"
+  }
+}

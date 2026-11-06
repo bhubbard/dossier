@@ -377,6 +377,8 @@ enum AiProvider {
   MISTRAL
   /// LM Studio on the user's own hardware (#210).
   LMSTUDIO
+  /// Cloudflare Workers AI.
+  WORKERS_AI
 }
 
 enum Creativity {

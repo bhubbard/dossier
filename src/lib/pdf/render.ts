@@ -1,25 +1,20 @@
 import "server-only";
 
-import { chromium, type Browser } from "playwright-core";
+import type { BrowserWorker } from "@cloudflare/puppeteer";
+import type { Browser } from "playwright-core";
 
+import { getCloudflareEnv } from "@/lib/cloudflare/context";
 import { env } from "@/lib/env";
 
 import { printWithDesktopApp } from "./desktop-print";
 import { PRINT_TOKEN_HEADER, signPrintToken } from "./print-token";
 
 // PDFs are printed by headless Chromium from the app's own print pages, so
-// they match the preview (RES-5, RES-7). One browser is shared by every
-// render and relaunched if it crashes; a few pages print at once and the
-// rest wait their turn. After a while without renders the browser closes to
-// give its memory back, and the next render starts it again.
+// they match the preview (RES-5, RES-7). When running on Cloudflare Workers,
+// Cloudflare Browser Rendering (env.MYBROWSER with @cloudflare/puppeteer) is used.
+// When running in Node.js / Docker, a local Playwright pool is used.
 
-/**
- * Pages printed at the same time; the rest queue. Measured with 2 vCPUs and
- * 1 GB (E11-6): a render takes about 0.25 s, so more at once only shares the
- * CPU; six requested together finish in 1.4 s at a peak of 520 MB.
- */
 export const MAX_CONCURRENT_RENDERS = 2;
-/** Close the browser after this long without a render. */
 const IDLE_MS = 5 * 60_000;
 const NAVIGATION_TIMEOUT_MS = 20_000;
 
@@ -30,24 +25,21 @@ type Pool = {
   idleTimer: ReturnType<typeof setTimeout> | null;
 };
 
-// Kept on globalThis so the dev server's hot reloads don't leak browsers.
 const globalForPdf = globalThis as unknown as { pdfPool?: Pool };
 const pool: Pool = (globalForPdf.pdfPool ??= { browser: null, active: 0, queue: [], idleTimer: null });
 
-/** Where the app itself is listening, for Chromium to open print pages. */
 function appOrigin(): string {
-  return `http://localhost:${process.env.PORT ?? 3000}`;
+  return env.DOSSIER_PUBLIC_URL || `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
-function browser(): Promise<Browser> {
+async function getLocalBrowser(): Promise<Browser> {
   if (!pool.browser) {
+    const { chromium } = await import("playwright-core");
     const launching = chromium
       .launch({
-        // Docker gives /dev/shm only 64 MB.
         args: ["--disable-dev-shm-usage"],
       })
       .then((launched) => {
-        // A crashed or closed browser is replaced on the next render.
         launched.on("disconnected", () => {
           if (pool.browser === launching) pool.browser = null;
         });
@@ -68,7 +60,6 @@ async function acquire(): Promise<void> {
     pool.active += 1;
     return;
   }
-  // The slot is handed over by release(), so `active` stays the same.
   await new Promise<void>((resolve) => pool.queue.push(resolve));
 }
 
@@ -86,17 +77,46 @@ function release(): void {
   }
 }
 
+/** Renders PDF using Cloudflare Browser Rendering API (env.MYBROWSER) */
+async function renderWithCloudflareBrowser(browserBinding: BrowserWorker, path: string): Promise<Uint8Array> {
+  const puppeteer = (await import("@cloudflare/puppeteer")).default;
+  const browser = await puppeteer.launch(browserBinding);
+  try {
+    const page = await browser.newPage();
+    const token = await signPrintToken(path);
+    await page.setExtraHTTPHeaders({ [PRINT_TOKEN_HEADER]: token });
+    const origin = appOrigin();
+    const response = await page.goto(`${origin}${path}`, {
+      waitUntil: "networkidle0",
+      timeout: NAVIGATION_TIMEOUT_MS,
+    });
+    if (!response?.ok()) {
+      throw new Error(`The print page ${path} answered ${response?.status() ?? "nothing"}.`);
+    }
+    await page.evaluate(() => (document as unknown as { fonts: { ready: Promise<unknown> } }).fonts.ready);
+    const pdfBuffer = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+    return new Uint8Array(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
+}
+
 /**
  * Prints an app page (e.g. "/print/base") to a PDF at the page size its
- * print CSS sets. Chromium may only talk to the app: anything else is
- * blocked, so fonts come from the bundle and nothing leaves the server.
+ * print CSS sets.
  */
 export async function renderPdf(path: string): Promise<Uint8Array> {
   if (env.DOSSIER_DESKTOP_PRINT_URL) return printWithDesktopApp(env.DOSSIER_DESKTOP_PRINT_URL, path);
+
+  const cf = await getCloudflareEnv();
+  if (cf?.MYBROWSER) {
+    return renderWithCloudflareBrowser(cf.MYBROWSER, path);
+  }
+
   await acquire();
   try {
     const origin = appOrigin();
-    const context = await (await browser()).newContext({
+    const context = await (await getLocalBrowser()).newContext({
       extraHTTPHeaders: { [PRINT_TOKEN_HEADER]: await signPrintToken(path) },
     });
     try {
@@ -106,8 +126,6 @@ export async function renderPdf(path: string): Promise<Uint8Array> {
       const page = await context.newPage();
       const response = await page.goto(`${origin}${path}`, { waitUntil: "load", timeout: NAVIGATION_TIMEOUT_MS });
       if (!response?.ok()) throw new Error(`The print page ${path} answered ${response?.status() ?? "nothing"}.`);
-      // A print page only redirects when it refuses the token, to the sign-in
-      // page, which answers 200. Printing that would hand it over as the document.
       if (response.request().redirectedFrom()) throw new Error(`The print page ${path} redirected to ${new URL(page.url()).pathname}.`);
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
       return await page.pdf({ preferCSSPageSize: true, printBackground: true });

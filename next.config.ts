@@ -1,12 +1,21 @@
 import type { NextConfig } from "next";
 
+const isCloudflare = process.env.CLOUDFLARE === "true" || process.env.OPEN_NEXT === "true";
+
+if (process.env.NODE_ENV === "development") {
+  import("@opennextjs/cloudflare")
+    .then(({ initOpenNextCloudflareForDev }) => initOpenNextCloudflareForDev())
+    .catch(() => {});
+}
+
 const nextConfig: NextConfig = {
   // The production image runs .next/standalone: the server and only the files
-  // it needs (E12-1).
-  output: "standalone",
+  // it needs (E12-1). On Cloudflare, open-next extracts .open-next directly.
+  output: isCloudflare ? undefined : "standalone",
   // playwright-core reads some of its own files by computed paths, which the
-  // tracing can't follow (browsers.json for one), so all of it goes along.
-  outputFileTracingIncludes: { "/**": ["./node_modules/playwright-core/**/*"] },
+  // tracing can't follow (browsers.json for one), so all of it goes along in standalone builds.
+  ...(isCloudflare ? {} : { outputFileTracingIncludes: { "/**": ["./node_modules/playwright-core/**/*"] } }),
+  serverExternalPackages: ["@cloudflare/puppeteer", "@prisma/adapter-d1", "@prisma/adapter-pg", "playwright-core"],
   logging: {
     // In development, Next.js logs every Server Action call with its
     // arguments, which would print the sign-in password (AUTH-1), API keys

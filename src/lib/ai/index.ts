@@ -12,6 +12,7 @@ import { LocalProvider } from "./providers/local";
 import { LmStudioProvider } from "./providers/lmstudio";
 import { MistralProvider } from "./providers/mistral";
 import { OpenAICompatibleProvider } from "./providers/openai-compatible";
+import { WorkersAiProvider } from "./providers/workers-ai";
 
 export { AiError } from "./errors";
 export type { AIProvider, ChatMessage, CompletionRequest, JsonCompletionRequest } from "./provider";
@@ -34,6 +35,8 @@ export function createProvider(config: AiConfig): AIProvider {
       return new MistralProvider(baseUrl, apiKey, model, timeoutMs, recordUsage);
     case AiProvider.LMSTUDIO:
       return new LmStudioProvider(baseUrl, apiKey, model, timeoutMs, recordUsage);
+    case AiProvider.WORKERS_AI:
+      return new WorkersAiProvider(baseUrl, apiKey, model, timeoutMs, recordUsage);
   }
 }
 

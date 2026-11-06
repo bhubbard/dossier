@@ -1,12 +1,10 @@
 import "server-only";
 
-import { stat, unlink } from "node:fs/promises";
-import path from "node:path";
-
-import { backupsDir, listBackups, writeBackup } from "@/lib/backups";
+import { listBackups, writeBackup } from "@/lib/backups";
 import { env } from "@/lib/env";
 import { logServerError } from "@/lib/log";
 import { loadSettings, saveSettings } from "@/lib/settings-data";
+import { deleteStorageFile } from "@/lib/storage";
 
 // Nightly backups (E10-7, SET-10): while "Nightly backups" is on, an export
 // is written at 03:00 server time, and backups older than
@@ -32,7 +30,7 @@ export function nextRun(now: Date): Date {
 export async function pruneBackups(now: Date, days = env.DOSSIER_BACKUP_RETENTION_DAYS): Promise<number> {
   const cutoff = now.getTime() - days * DAY_MS;
   const old = (await listBackups()).filter((backup) => backup.modified.getTime() < cutoff);
-  await Promise.all(old.map((backup) => unlink(path.join(backupsDir(), backup.name)).catch(() => {})));
+  await Promise.all(old.map((backup) => deleteStorageFile("backups", backup.name)));
   return old.length;
 }
 
@@ -58,7 +56,7 @@ export async function runNightlyBackup(now = new Date()): Promise<"written" | "o
 export async function lastNightlyBackup(): Promise<Date | null> {
   const [latest] = (await listBackups()).filter((backup) => backup.name.startsWith("dossier-backup-nightly-"));
   if (!latest) return null;
-  return (await stat(path.join(backupsDir(), latest.name)).catch(() => null))?.mtime ?? null;
+  return latest.modified ?? null;
 }
 
 /** At the start: the backup the last night missed, when the newest is over a day old or there's none. */

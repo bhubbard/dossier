@@ -1,7 +1,6 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readdir, rm, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { zipSync, type Zippable } from "fflate";
@@ -14,6 +13,7 @@ import { renderPdf } from "@/lib/pdf/render";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
 import { loadSettings } from "@/lib/settings-data";
+import { deleteAllStorageFiles, deleteStorageFile, listStorageFiles, writeStorageFile } from "@/lib/storage";
 
 import { defineJob } from "./runner";
 
@@ -43,20 +43,19 @@ function unique(name: string, taken: Set<string>): string {
 
 /** Removes zips nobody downloaded in time; the job sweep calls it too. */
 export async function removeOldZips(now: number): Promise<void> {
-  const dir = downloadsDir();
-  const names = await readdir(dir).catch(() => []);
+  const files = await listStorageFiles("downloads");
   await Promise.all(
-    names.map(async (name) => {
-      const file = path.join(dir, name);
-      const { mtimeMs } = await stat(file).catch(() => ({ mtimeMs: now }));
-      if (now - mtimeMs > KEEP_MS) await unlink(file).catch(() => {});
+    files.map(async (file) => {
+      if (now - file.modified.getTime() > KEEP_MS) {
+        await deleteStorageFile("downloads", file.name);
+      }
     }),
   );
 }
 
 /** Removes every zip waiting to be downloaded (Delete everything, E10-8). */
 export async function deleteAllDownloads(): Promise<void> {
-  await rm(downloadsDir(), { recursive: true, force: true });
+  await deleteAllStorageFiles("downloads");
 }
 
 /** The documents that are printed: an application's email isn't. */
@@ -122,9 +121,8 @@ export const zipPdfsJob = defineJob({
       // PDFs are compressed already: store them as they are.
       files[`${folder}/${fileName}`] = [pdf, { level: 0 }];
     }
-    await mkdir(downloadsDir(), { recursive: true });
     const file = `${randomUUID()}.zip`;
-    await writeFile(path.join(downloadsDir(), file), zipSync(files));
+    await writeStorageFile("downloads", file, zipSync(files), "application/zip");
     return { file, fileName: zipFileName(now), documents: documents.length };
   },
 });
