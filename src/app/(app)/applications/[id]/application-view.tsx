@@ -62,7 +62,9 @@ import { ApplicationHeader } from "./application-header";
 import { ApplicationMenu } from "./application-menu";
 import { ConversationTab } from "./conversation-tab";
 import { EmailTab, type Attachments } from "./email-tab";
+import { InterviewPrepTab } from "./interview-prep-tab";
 import type { GmailSender } from "./send-with-gmail";
+import type { InterviewPrep } from "@/lib/interview-prep-data";
 
 import { JobWatcher } from "./job-watcher";
 import { NotesTab } from "./notes-tab";
@@ -168,6 +170,8 @@ export type ApplicationViewProps = {
   /** "5/7 match" on the Job posting tab, when the requirements were matched. */
   score: { hit: number; total: number } | null;
   initialTab: Tab;
+  /** Career-Ops interview intelligence and prep pack. */
+  interviewPrep: InterviewPrep | null;
   /** Whether an AI provider is set up; without one, the AI buttons point to Settings. */
   aiReady: boolean;
   /** Units being rewritten in the background (E8-4), e.g. since before a reload. */
@@ -213,6 +217,7 @@ export function ApplicationView({
   letterDate,
   score,
   initialTab,
+  interviewPrep,
   aiReady,
   rewriting: rewritingAtLoad,
   messages,
@@ -700,6 +705,7 @@ export function ApplicationView({
           <TabsTrigger value="resume">Resume</TabsTrigger>
           <TabsTrigger value="letter">Cover letter</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
+          <TabsTrigger value="interview">Interview prep</TabsTrigger>
           {gmail && (gmail.reading || gmail.emails.length > 0) && (
             <TabsTrigger value="conversation">
               {waiting > 0 ? `Conversation · ${waiting} new` : gmail.emails.length > 0 ? `Conversation · ${gmail.emails.length}` : "Conversation"}
@@ -810,6 +816,16 @@ export function ApplicationView({
             onWrite={() => void writeEmail()}
             attachments={attachments}
             gmail={gmail && { sender: gmail.sender, sentBefore: gmail.sentBefore }}
+          />
+        </TabsContent>
+
+        <TabsContent value="interview" className="flex min-h-0 min-w-0 flex-[999_1_480px]">
+          <InterviewPrepTab
+            applicationId={application.id}
+            interviewPrep={interviewPrep}
+            aiReady={aiReady}
+            company={application.company}
+            role={application.title}
           />
         </TabsContent>
 

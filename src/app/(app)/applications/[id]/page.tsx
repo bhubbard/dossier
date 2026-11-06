@@ -7,6 +7,7 @@ import { editsSchema, matchSchema, matchScore } from "@/lib/application-data";
 import { loadApplication, loadDocuments, readJson } from "@/lib/application-documents";
 import { formatShortDate } from "@/lib/dates";
 import { resolveFileName } from "@/lib/file-name";
+import { interviewPrepSchema } from "@/lib/interview-prep-data";
 import { refineJobKey } from "@/lib/jobs/refine";
 import { regenerateUnitJob, unitJobKey } from "@/lib/jobs/regenerate-unit";
 import { findUnfinishedJobs } from "@/lib/jobs/runner";
@@ -58,6 +59,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
     ]);
 
   const match = readJson(matchSchema, application.match);
+  const interviewPrep = readJson(interviewPrepSchema, application.interviewPrep);
   const messages = application.messages
     .map((message, index) => ({
       id: message.id,
@@ -153,6 +155,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
       letterDate={letterDate}
       score={match && match.items.length > 0 ? matchScore(match) : null}
       initialTab={tabFrom(tab)}
+      interviewPrep={interviewPrep}
       aiReady={aiReady}
       rewriting={rewriting}
       messages={messages}

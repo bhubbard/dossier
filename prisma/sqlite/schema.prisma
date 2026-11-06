@@ -519,6 +519,8 @@ model Application {
   /// in, when Dossier added it: kept in step with nextInterviewAt both ways.
   interviewEventId    String?
   interviewCalendarId String?
+  /// Tailored interview intelligence and prep (interviewPrepSchema).
+  interviewPrep       Json?
   /// The Find jobs posting it was started from, if any (E14-8).
   posting             Posting?
   /// The agent candidate it was prepared from (E16).

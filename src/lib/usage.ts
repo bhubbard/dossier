@@ -17,6 +17,7 @@ export const USAGE_TASKS = [
   { task: "refine-chat", label: "Refining in chat", hint: "Changes you ask for in an application's chat" },
   { task: "classify-reply", label: "Reading replies", hint: "Employers' mail from Gmail, read in the background" },
   { task: "draft-reply", label: "Drafting answers", hint: "Your answers to employers' replies" },
+  { task: "interview-prep", label: "Interview intelligence", hint: "STAR stories, round-by-round Q&A, and outreach" },
   { task: "connection-check", label: "Connection checks", hint: "Test connection in Settings" },
 ] as const;
 

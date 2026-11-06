@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { isAshbyUrl } from "./ashby";
+import { isBambooHrUrl } from "./bamboohr";
 import { extractGreenhouseParams, isGreenhouseUrl } from "./greenhouse";
 import { extractIndeedJobKey, isIndeedUrl, parseIndeedHtml } from "./indeed";
 import { trySpecializedExtractors } from "./index";
 import { extractLeverParams, isLeverUrl } from "./lever";
 import { extractLinkedInJobId, isLinkedInUrl, parseLinkedInGuestHtml } from "./linkedin";
+import { isPersonioUrl } from "./personio";
+import { extractSmartRecruitersParams, isSmartRecruitersUrl } from "./smartrecruiters";
+import { extractWorkdayParams, isWorkdayUrl } from "./workday";
 
 describe("LinkedIn Extractor", () => {
   it("detects LinkedIn URLs accurately", () => {
@@ -104,6 +108,37 @@ describe("Ashby Extractor", () => {
   it("detects Ashby URLs", () => {
     expect(isAshbyUrl(new URL("https://jobs.ashbyhq.com/openai/123-456"))).toBe(true);
     expect(isAshbyUrl(new URL("https://ashbyhq.com/pricing"))).toBe(false);
+  });
+});
+
+describe("Workday Extractor", () => {
+  it("detects Workday URLs and extracts params", () => {
+    const url = new URL("https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Senior-Compiler-Engineer_JR1982345");
+    expect(isWorkdayUrl(url)).toBe(true);
+    expect(extractWorkdayParams(url)).toEqual({
+      tenant: "nvidia",
+      site: "NVIDIAExternalCareerSite",
+      jobPath: "US-CA-Santa-Clara/Senior-Compiler-Engineer_JR1982345",
+    });
+  });
+});
+
+describe("SmartRecruiters Extractor", () => {
+  it("detects SmartRecruiters URLs and extracts params", () => {
+    const url = new URL("https://jobs.smartrecruiters.com/AcmeCorp/12345678-dev");
+    expect(isSmartRecruitersUrl(url)).toBe(true);
+    expect(extractSmartRecruitersParams(url)).toEqual({
+      company: "AcmeCorp",
+      id: "12345678-dev",
+    });
+  });
+});
+
+describe("BambooHR & Personio Extractors", () => {
+  it("detects BambooHR and Personio URLs", () => {
+    expect(isBambooHrUrl(new URL("https://gitlab.bamboohr.com/careers/32"))).toBe(true);
+    expect(isPersonioUrl(new URL("https://acme.jobs.personio.de/job/12345"))).toBe(true);
+    expect(isPersonioUrl(new URL("https://acme.jobs.personio.com/job/12345"))).toBe(true);
   });
 });
 

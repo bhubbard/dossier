@@ -6,13 +6,16 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { ChatRole, DocumentKind, VersionCause } from "@/generated/prisma/enums";
 import { action, ActionError } from "@/lib/action";
+import { getAiProvider } from "@/lib/ai";
 import { isAiConfigured } from "@/lib/ai/config";
+import { loadTaskOptions } from "@/lib/ai/task-options";
+import { generateInterviewPrep } from "@/lib/ai/tasks/interview-prep";
 import { profileUnits } from "@/lib/ai/tasks/tailor-resume";
 import { editsSchema, extractedSchema, matchSchema, trimmedSchema, unitsSchema, withSkillAdded } from "@/lib/application-data";
 import { loadDocuments, readJson } from "@/lib/application-documents";
 import { WRITTEN_EMAIL_UNITS } from "@/lib/application-email";
 import { documentLabels } from "@/lib/document-labels";
-import { frozenCopySchema, frozenProfile, readFrozenCopy, withSectionFromProfile } from "@/lib/frozen-copy";
+import { frozenCopySchema, frozenProfile, profileOfApplication, readFrozenCopy, withSectionFromProfile } from "@/lib/frozen-copy";
 import { updateDocuments } from "@/lib/document-units";
 import { DOCUMENT_LABELS } from "@/lib/file-name";
 import { syncInterviewToCalendar } from "@/lib/google/availability";
@@ -646,3 +649,75 @@ export const undoEmailRewrite = action(z.object({ id: z.string().min(1), jobId: 
   refresh(id);
   return null;
 });
+
+// ─── Interview intelligence & prep (Interview tab) ───────────────────────────
+
+/**
+ * "Generate Interview Prep": creates a Career-Ops 5-stage interview prep pack
+ * (STAR stories, round-by-round Q&A, reverse questions, de-risking guide, cold outreach).
+ */
+export const generateInterviewPrepAction = action(
+  z.object({ id: z.string().min(1) }),
+  async ({ id }, { toast }) => {
+    const application = await prisma.application.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        company: true,
+        role: true,
+        postingText: true,
+        frozen: true,
+      },
+    });
+    if (!application) throw new ActionError(GONE);
+    if (!application.postingText.trim()) {
+      throw new ActionError("This application has no job posting text to analyze.");
+    }
+    if (!(await isAiConfigured())) {
+      throw new ActionError("That needs an AI provider. Choose one in Settings → AI provider.");
+    }
+
+    const [provider, options, profile] = await Promise.all([
+      getAiProvider(),
+      loadTaskOptions(),
+      profileOfApplication(application.frozen),
+    ]);
+
+    const prep = await generateInterviewPrep(
+      provider,
+      {
+        posting: application.postingText,
+        profile,
+        company: application.company || "Target Company",
+        role: application.role || "Target Role",
+      },
+      options,
+    );
+
+    await prisma.application.update({
+      where: { id },
+      data: { interviewPrep: prep.data as unknown as Prisma.InputJsonValue },
+    });
+
+    toast("Interview prep generated.");
+    refresh(id);
+    return prep.data;
+  },
+);
+
+/**
+ * "Clear Interview Prep": removes the current interview prep pack so it can be regenerated.
+ */
+export const clearInterviewPrepAction = action(
+  z.object({ id: z.string().min(1) }),
+  async ({ id }, { toast }) => {
+    const { count } = await prisma.application.updateMany({
+      where: { id },
+      data: { interviewPrep: Prisma.DbNull },
+    });
+    if (count === 0) throw new ActionError(GONE);
+    toast("Interview prep cleared.");
+    refresh(id);
+    return null;
+  },
+);
